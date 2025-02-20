@@ -1,0 +1,184 @@
+---
+title: "SDS315_HW4"
+author: "William Zuo"
+date: "2025-02-13"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+  pdf_document:
+    toc: true
+---
+
+```{r global_options, include=FALSE}
+#needed packages:
+library(tidyverse)
+library(mosaic)
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+# **Introduction**
+
+My name is William Zuo and my EID is wcz82. This is where my results and solutions are contained. Here is the link to my GitHub repository containing my R code for this assignment: https://github.com/black-bird5/SDS315_HW4. 
+
+# **Problem 1**
+
+```{r, echo=FALSE}
+expected_flags = c(yes = 0.024, no = 0.976)
+observed_flags = c(yes = 70, no = 1951)
+num_trades = 2021
+
+chi_squared = function(observed, expected){
+  sum((observed - expected)^2 / expected)
+}
+
+chi1_sim = do(100000) * {
+  simulated_trades = rmultinom(1, num_trades, expected_flags)
+  this_chi1 = chi_squared(simulated_trades, num_trades * expected_flags)
+  c(chi1 = this_chi1)
+}
+
+ggplot(chi1_sim) +
+  geom_histogram(aes(x = chi1))
+
+chi1_p = chi_squared(observed_flags, num_trades * expected_flags)
+summarize(chi1_sim, prop(chi1 >= chi1_p))
+```
+
+Null hypothesis: The amount of flagged trades is not significantly different from the baseline rate of 2.4%. 
+
+Test statistic: The 70 flagged trades out of the last 2021 trades by Iron Bank employees.
+
+P-value: 0.0023 
+
+Conclusion: The null hypothesis looks very unlikely in light of the data, because, assuming the null hypothesis is true, the data would have only obtained around 0.23% of the time, which is significantly below a 5% significance level. 
+
+# **Problem 2**
+
+```{r, echo=FALSE}
+expected_violations = c(yes = 0.03, no = 0.97)
+observed_violations = c(yes = 8, no = 42)
+num_inspections = 50
+
+chi2_sim = do(100000) * {
+  simulated_inspections = rmultinom(1, num_inspections, expected_violations)
+  this_chi2 = chi_squared(simulated_inspections, num_inspections * expected_violations)
+  c(chi2 = this_chi2)
+}
+
+ggplot(chi2_sim) +
+  geom_histogram(aes(x = chi2))
+
+chi2_p = chi_squared(observed_violations, num_inspections * expected_violations)
+summarize(chi2_sim, prop(chi2 >= chi2_p))
+```
+
+Null hypothesis: There is no significant difference in health inspection violations between Gourmet Bites and all restaurants. 
+
+Test statistic: The 8 health code violations out of 50 inspections at branches of Gourmet Bites.
+
+P-value: 0.00011 
+
+Conclusion: The null hypothesis looks very unlikely in light of the data, because, assuming the null hypothesis is true, the data would have only obtained around 0.011% of the time, which is significantly below a 5% significance level. 
+
+# **Problem 3**
+
+```{r, echo=FALSE}
+expected_groups = c(g1 = 0.3, g2 = 0.25, g3 = 0.2, g4 = 0.15, g5 = 0.1)
+observed_groups = c(g1 = 85, g2 = 56, g3 = 59, g4 = 27, g5 = 13)
+num_judges = 240
+
+chi3_sim = do(100000) * {
+  simulated_groups = rmultinom(1, num_judges, expected_groups)
+  this_chi3 = chi_squared(simulated_groups, num_judges * expected_groups)
+  c(chi3 = this_chi3)
+}
+
+ggplot(chi3_sim) +
+  geom_histogram(aes(x = chi3))
+
+chi3_p = chi_squared(observed_groups, num_judges * expected_groups)
+summarize(chi3_sim, prop(chi3 >= chi3_p))
+```
+
+The null hypothesis states that there no statistically significant difference in the distribution of jurors empaneled by this judge compared with the county’s population proportions, the test statistic used was the distribution of jurors empaneled by the judge over 20 trials, and the P-value, or the probability of the test statistic occuring given the null hypothesis, is 1.474%. Based on the data, the null hypothesis seems less likely to be true, because 1.474% is below a 5% significance level. However, the data taken alone does not suggest systematic bias in jury selection. An alternative explanation could be that the county's population proportion differs in some statistically significant way from those who qualify from jury duty, and one could investigate further by looking at the the population statistics of those who qualify for jury duty and how it differs from the county's population proportions. 
+
+# **Problem 4**
+
+###  **Part A**
+
+```{r, echo=FALSE}
+brown_sentences <- readLines("brown_sentences.txt")
+
+preprocess_text <- function(sentence) {
+  sentence <- toupper(sentence) 
+  sentence <- gsub("[^A-Z]", "", sentence)
+  return(sentence)
+}
+
+processed_sentences <- sapply(brown_sentences, preprocess_text)
+
+count_letters <- function(sentence) {
+  letter_counts <- table(strsplit(sentence, "")[[1]])
+  return(letter_counts)
+}
+
+observed_counts_list <- lapply(processed_sentences, count_letters)
+
+letter_freqs <- read.csv("letter_frequencies.csv")
+
+calculate_expected <- function(sentence) {
+  sentence_length <- nchar(sentence)
+  expected_counts <- setNames(letter_freqs$Probability * sentence_length, letter_freqs$Letter)
+  return(expected_counts)
+}
+
+expected_counts_list <- lapply(processed_sentences, calculate_expected)
+
+chi_squared <- function(observed, expected) {
+  common_letters <- intersect(names(observed), names(expected))
+  observed <- observed[common_letters]
+  expected <- expected[common_letters]
+  sum((observed - expected)^2 / expected)
+}
+
+chi_squared_values <- mapply(chi_squared, observed_counts_list, expected_counts_list)
+chi_squared_distribution <- unlist(chi_squared_values)
+hist(chi_squared_distribution)
+summary(chi_squared_distribution)
+```
+
+### **Part B**
+
+```{r, echo=FALSE}
+sentences <- c(
+  "She opened the book and started to read the first chapter, eagerly anticipating what might come next.",
+  "Despite the heavy rain, they decided to go for a long walk in the park, crossing the main avenue by the fountain in the center.",
+  "The museum’s new exhibit features ancient artifacts from various civilizations around the world.",
+  "He carefully examined the document, looking for any clues that might help solve the mystery.",
+  "The students gathered in the auditorium to listen to the guest speaker’s inspiring lecture.",
+  "Feeling vexed after an arduous and zany day at work, she hoped for a peaceful and quiet evening at home, cozying up after a quick dinner with some TV, or maybe a book on her upcoming visit to Auckland.",
+  "The chef demonstrated how to prepare a delicious meal using only locally sourced ingredients, focusing mainly on some excellent dinner recipes from Spain.",
+  "They watched the sunset from the hilltop, marveling at the beautiful array of colors in the sky.",
+  "The committee reviewed the proposal and provided many points of useful feedback to improve the project’s effectiveness.",
+  "Despite the challenges faced during the project, the team worked tirelessly to ensure its successful completion, resulting in a product that exceeded everyone’s expectations."
+)
+
+processed_sentences <- sapply(sentences, preprocess_text)
+observed_test_counts <- lapply(processed_sentences, count_letters)
+expected_test_counts <- lapply(processed_sentences, calculate_expected)
+
+test_chi_squared <- mapply(chi_squared, observed_test_counts, expected_test_counts)
+
+p_values <- sapply(test_chi_squared, function(x) prop(chi_squared_distribution >= x))
+
+p_value_table <- data.frame(
+  Sentence = 1:10,
+  P_Value = round(p_values, 3) 
+)
+
+print(p_value_table, row.names = FALSE)
+```
+
+Based on the p-values generated by comparing the expected distribution of English letters in a standard sentence to the actual distribution of English letters in the sentences provided, it seems that sentence 6, "Feeling vexed after an arduous and zany day at work, she hoped for a peaceful and quiet evening at home, cozying up after a quick dinner with some TV, or maybe a book on her upcoming visit to Auckland," is the LLM generated sentence. The p-value for that sentence was 0.008, meaning, assuming that none of the sentences were AI generated, the chances of that sentence being human-generated content is 0.8%, which is significantly below a 5% significance level. 
